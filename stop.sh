@@ -2,16 +2,19 @@
 # Stop the Hive-Iceberg-MinIO Lakehouse
 
 echo "Stopping Jupyter notebook..."
-docker-compose -f spark-notebook.yml down
+docker-compose -f spark-notebook.yml stop
 
 echo "Stopping infrastructure..."
-docker-compose down
+docker-compose stop
 
 echo ""
 echo "=========================================="
 echo "Lakehouse stopped."
 echo "=========================================="
 echo ""
-echo "Your data is preserved in Docker volumes."
-echo "Run ./start.sh to start again."
+echo "Containers are stopped but preserved."
+echo "Run ./start.sh to start again quickly."
+echo ""
+echo "To remove containers completely, run:"
+echo "  ./cleanup.sh"
 echo ""

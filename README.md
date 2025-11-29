@@ -58,13 +58,13 @@ For most learning and development scenarios, Hive Metastore is the pragmatic cho
 
 ## Quick Start
 
-Just run the start script:
+**First time setup:**
 
 ```bash
-./start.sh
+./setup.sh
 ```
 
-That's it. The script downloads required JARs (first run only), starts all containers, and waits for everything to be healthy.
+This downloads required JARs, creates all containers, and waits for everything to be healthy.
 
 Open http://localhost:8888 and run `notebooks/getting_started.ipynb`.
 
@@ -111,37 +111,36 @@ Restart Docker, restart your machine, come back a week later - your data is exac
 
 This is how production systems work. You set them up once and they keep running.
 
-## Shutdown and Restart
+## Daily Usage
 
 ```bash
-# Stop everything (data persists)
+# End of day - stop containers (preserves everything)
 ./stop.sh
 
-# Or manually:
-docker-compose down
-docker-compose -f spark-notebook.yml down
-
-# Start again
+# Next day - start containers again
 ./start.sh
-
-# Or manually:
-docker-compose up -d
-docker-compose -f spark-notebook.yml up -d
 ```
+
+Containers are stopped but preserved. All your data, tables, and settings remain intact.
 
 ## Complete Cleanup
 
 To wipe everything and start completely fresh:
 
 ```bash
-./cleanup.sh
-
-# Or manually:
-docker-compose down -v
-docker-compose -f spark-notebook.yml down -v
+./nuke.sh
 ```
 
-The `-v` flag removes the Docker volumes, which is where your data lives.
+This removes all containers, volumes, and data. Run `./setup.sh` afterwards to create fresh containers.
+
+## Script Reference
+
+| Script | Purpose | When to use |
+|--------|---------|-------------|
+| `./setup.sh` | Create containers + download JARs | First time setup only |
+| `./start.sh` | Start existing containers | Daily - beginning of day |
+| `./stop.sh` | Stop containers (preserves them) | Daily - end of day |
+| `./nuke.sh` | Delete everything (containers + data) | When you want a fresh start |
 
 ## Why These Specific JARs?
 
@@ -212,7 +211,7 @@ Look for "Starting Hive Metastore Server". If you see errors, check the JAR file
 Also verify both compose files use the same network:
 
 ```bash
-docker network ls | grep lakehouse
+docker network ls | grep dasnet
 ```
 
 ### MinIO bucket doesn't exist
@@ -231,9 +230,10 @@ Should show "Bucket warehouse created successfully".
 MINIO-HIVE-LAKEHOUSE/
 ├── docker-compose.yml      # PostgreSQL, MinIO, Hive Metastore
 ├── spark-notebook.yml      # Jupyter + Spark
-├── start.sh               # Start everything
-├── stop.sh                # Stop everything
-├── cleanup.sh             # Remove everything including data
+├── setup.sh               # First-time setup (creates containers)
+├── start.sh               # Start stopped containers
+├── stop.sh                # Stop containers (preserves them)
+├── nuke.sh                # Delete everything including data
 ├── conf/
 │   ├── hive-site.xml      # Hive Metastore configuration
 │   ├── core-site.xml      # Hadoop S3A configuration
