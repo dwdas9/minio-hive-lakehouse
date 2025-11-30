@@ -1,10 +1,8 @@
-# Real-Time Crypto Analytics - Data Engineering Learning Project
+# Real-Time Crypto Analytics
 
-This project teaches production-grade Data Engineering by building a real-time cryptocurrency analytics platform. We use **live data** from public APIs, not fake CSV files.
+This project teaches building a real-time cryptocurrency analytics platform. We use **live data** from public APIs, process it with **Spark Structured Streaming**, store it in **Iceberg tables** on **MinIO**, transform with **dbt**, and orchestrate with **Airflow**.
 
 ## What You'll Learn
-
-This isn't a toy project. You'll build exactly what data engineers do at companies like Coinbase or Robinhood:
 
 1. **Data Modeling** - Design Bronze/Silver/Gold layers and dimensional models
 2. **Streaming Ingestion** - Kafka producers consuming real-time crypto APIs
