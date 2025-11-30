@@ -3,7 +3,7 @@
 # Use this when you want to start completely fresh
 
 echo "=========================================="
-echo "☢️  NUKE - Complete Cleanup"
+echo "NUKE - Complete Cleanup"
 echo "=========================================="
 echo ""
 echo "This will PERMANENTLY DELETE:"
@@ -28,7 +28,7 @@ docker-compose down -v
 
 echo ""
 echo "=========================================="
-echo "✓ Everything has been nuked!"
+echo "Everything has been nuked!"
 echo "=========================================="
 echo ""
 echo "All containers and data removed."

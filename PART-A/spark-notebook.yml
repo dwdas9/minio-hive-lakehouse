@@ -28,4 +28,4 @@ services:
 networks:
   dasnet:
     external: true
-    name: minio-hive-lakehouse_dasnet
+    name: part-a_dasnet

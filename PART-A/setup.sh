@@ -15,21 +15,21 @@ if [ ! -f "$SCRIPT_DIR/lib/postgresql-42.6.0.jar" ]; then
     echo "Downloading PostgreSQL JDBC driver..."
     curl -sL -o "$SCRIPT_DIR/lib/postgresql-42.6.0.jar" \
         https://jdbc.postgresql.org/download/postgresql-42.6.0.jar
-    echo "✓ PostgreSQL driver downloaded"
+    echo "PostgreSQL driver downloaded"
 fi
 
 if [ ! -f "$SCRIPT_DIR/lib/hadoop-aws-3.3.4.jar" ]; then
     echo "Downloading Hadoop AWS JAR..."
     curl -sL -o "$SCRIPT_DIR/lib/hadoop-aws-3.3.4.jar" \
         https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar
-    echo "✓ Hadoop AWS downloaded"
+    echo "Hadoop AWS downloaded"
 fi
 
 if [ ! -f "$SCRIPT_DIR/lib/aws-java-sdk-bundle-1.12.262.jar" ]; then
     echo "Downloading AWS SDK bundle..."
     curl -sL -o "$SCRIPT_DIR/lib/aws-java-sdk-bundle-1.12.262.jar" \
         https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar
-    echo "✓ AWS SDK downloaded"
+    echo "AWS SDK downloaded"
 fi
 
 echo ""
@@ -43,7 +43,7 @@ sleep 10
 # Wait for metastore
 for i in {1..30}; do
     if docker-compose logs hive-metastore 2>&1 | grep -q "Starting Hive Metastore Server"; then
-        echo "✓ Hive Metastore is ready!"
+        echo "Hive Metastore is ready!"
         break
     fi
     echo "  Waiting... ($i/30)"
@@ -56,7 +56,7 @@ docker-compose -f spark-notebook.yml up -d
 
 echo ""
 echo "=========================================="
-echo "✓ Setup Complete! Lakehouse is running!"
+echo "Setup Complete! Lakehouse is running!"
 echo "=========================================="
 echo ""
 echo "  Jupyter:      http://localhost:8888"

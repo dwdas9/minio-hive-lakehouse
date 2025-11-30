@@ -6,7 +6,7 @@ A complete data lakehouse setup using Apache Iceberg, MinIO, and Hive Metastore,
 
 This repository is organized into two main parts:
 
-### 📁 PART-A: Core Infrastructure
+###  PART-A: Core Infrastructure
 The production-ready lakehouse foundation. Start here first.
 
 - **MinIO** - S3-compatible object storage
@@ -14,17 +14,17 @@ The production-ready lakehouse foundation. Start here first.
 - **PostgreSQL** - Metadata database  
 - **Spark Notebook** - Interactive development environment
 
-**📖 [Go to PART-A Documentation](PART-A/README.md)**
+** [Go to PART-A Documentation](PART-A/README.md)**
 
-### 📁 PART-B: Learning & Tutorials
-Advanced projects and learning materials that build on PART-A.
+### PART-B: Real-Time Streaming Analytics
+Production-grade streaming data pipeline for cryptocurrency analytics.
 
-- Real-time crypto analytics pipeline
-- Kafka streaming integration
-- dbt transformations
-- Airflow orchestration
+- Real-time crypto price ingestion via Kafka
+- Spark Structured Streaming (Bronze layer)
+- dbt transformations (Silver/Gold layers)
+- Airflow orchestration & scheduling
 
-**📖 [Go to PART-B Documentation](PART-B/ReadMe.md)**
+** [Go to PART-B Documentation](PART-B/ReadMe.md)**
 
 ## Quick Start
 
@@ -45,9 +45,9 @@ This creates the base lakehouse with MinIO, Hive, and Spark.
 | MinIO Console | http://localhost:9001 | minioadmin / minioadmin |
 | Spark UI | http://localhost:4040 | (Active during queries) |
 
-### 3. Run Learning Projects (Optional)
+### 3. Run Streaming Analytics (Optional)
 
-Once PART-A is running, you can start learning projects:
+Once PART-A is running, you can start the real-time streaming pipeline:
 
 ```bash
 cd PART-B
@@ -71,12 +71,12 @@ cd PART-A
 ./nuke.sh
 ```
 
-### PART-B (Learning Projects)
+### PART-B (Streaming Analytics)
 
 ```bash
 cd PART-B
 
-# Start learning environment
+# Start streaming pipeline
 ./setup.sh
 
 # Access services
@@ -86,53 +86,19 @@ cd PART-B
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                       PART-A                            │
-│            Core Lakehouse Infrastructure                 │
-│                                                         │
-│  ┌─────────────┐   ┌──────────────────┐   ┌─────────┐ │
-│  │   Jupyter   │──▶│  Spark + Iceberg │──▶│  MinIO  │ │
-│  │  Notebook   │   │                  │   │ (data)  │ │
-│  └─────────────┘   └────────┬─────────┘   └─────────┘ │
-│                             │                           │
-│                             ▼                           │
-│                    ┌──────────────────┐                │
-│                    │  Hive Metastore  │                │
-│                    │    (catalog)     │                │
-│                    └────────┬─────────┘                │
-│                             │                           │
-│                             ▼                           │
-│                    ┌──────────────────┐                │
-│                    │    PostgreSQL    │                │
-│                    │   (metadata)     │                │
-│                    └──────────────────┘                │
-└─────────────────────────────────────────────────────────┘
-                            │
-                            │ (Network: dasnet)
-                            │
-┌─────────────────────────────────────────────────────────┐
-│                       PART-B                            │
-│              Learning & Advanced Projects                │
-│                                                         │
-│  ┌──────────┐   ┌────────┐   ┌──────────────────────┐ │
-│  │ CoinGecko│──▶│ Kafka  │──▶│ Spark Streaming      │ │
-│  │   API    │   │        │   │ (Bronze ingestion)   │ │
-│  └──────────┘   └────────┘   └──────────┬───────────┘ │
-│                                          │              │
-│                                          ▼              │
-│                                 ┌────────────────────┐ │
-│                                 │ dbt Transformations│ │
-│                                 │ (Silver → Gold)    │ │
-│                                 └────────┬───────────┘ │
-│                                          │              │
-│                                          ▼              │
-│                                 ┌────────────────────┐ │
-│                                 │    Airflow         │ │
-│                                 │  (Orchestration)   │ │
-│                                 └────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
-```
+The architecture consists of two main components:
+1. **PART-A: Core Lakehouse Infrastructure**
+   - MinIO for object storage
+   - Hive Metastore for table cataloging
+   - PostgreSQL for metadata persistence
+   - Spark Notebook for interactive data processing
+2. **PART-B: Real-Time Streaming Analytics**
+   - Kafka for data ingestion
+   - Spark Structured Streaming for real-time data processing
+   - dbt for data transformations
+   - Airflow for orchestration and scheduling
+
+![](images/20251201010050.png)
 
 ## What Persists?
 
@@ -206,9 +172,9 @@ For learning and development, Hive is more practical.
 ### Why Separate PART-A and PART-B?
 
 **PART-A:** Core infrastructure you always need  
-**PART-B:** Learning projects that add complexity
+**PART-B:** Real-time streaming analytics with Kafka, dbt, and Airflow
 
-You can use PART-A for your own projects without the streaming/dbt/Airflow complexity of PART-B.
+You can use PART-A for batch processing and exploratory work without the streaming complexity of PART-B.
 
 ## Contributing
 
