@@ -1,34 +1,12 @@
 # MinIO + Hive Metastore + Iceberg Lakehouse
-This repository provides a Docker-based setup for a data lakehouse using Apache Iceberg, with MinIO for object storage and Hive Metastore as the catalog. It includes a Jupyter notebook environment with PySpark for interactive querying and data manipulation.
+This repository provides a Docker-based setup for a data lakehouse using Apache Iceberg, with MinIO for object storage and Hive Metastore as the catalog. It includes a Jupyter notebook environment with PySpark for interactive querying and data manipulation. The best part of this setup is that it's fully on-premises with no cloud dependencies. It gives you a better understanding of the components compared to a cloud setup, where most services are black boxes.
 
 ## Why This Setup?
 
-If you've tried the Polaris-based setup, you know the pain - every time the container restarts, you get new credentials and have to reconfigure everything. That's fine for a demo, but annoying for actual development work.
+The recommended approach for a lakehouse catalog using Iceberg is Polaris. However, if you've tried the Polaris-based setup, you know the pain—every time the container restarts, you get new credentials and have to reconfigure everything. This is not a practical approach. You need a solid setup that doesn't require changes every time something restarts. Hence, Hive is used as the catalog. This is also a standard setup with proven compatibility. Hive is not an odd component in the architecture.
 
-This setup uses Hive Metastore instead. It's been around for 15+ years, runs at thousands of companies, and Just Works™. Start it once, use it forever. Your tables, your data, your catalogs - everything persists.
 
-## What We're Building
-
-Same architecture as the Polaris setup, just with a different catalog:
-
-```
-┌─────────────┐     ┌──────────────────┐     ┌─────────┐
-│   Jupyter   │────▶│  Spark + Iceberg │────▶│  MinIO  │
-│  Notebook   │     │                  │     │ (data)  │
-└─────────────┘     └────────┬─────────┘     └─────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │  Hive Metastore  │
-                    │    (catalog)     │
-                    └────────┬─────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │    PostgreSQL    │
-                    │   (metadata)     │
-                    └──────────────────┘
-```
+![](images/20251130131955.png)
 
 **How it flows:**
 1. You write SQL in Jupyter
@@ -37,31 +15,20 @@ Same architecture as the Polaris setup, just with a different catalog:
 4. Spark reads Iceberg metadata from MinIO to find data files
 5. Spark reads/writes Parquet files directly to MinIO
 
-## Polaris vs Hive Metastore - What's the Difference?
-
-Both are catalogs - they track what tables exist and where the data lives. The architecture is identical, just swapping the catalog component.
-
-| Aspect | Polaris | Hive Metastore |
-|--------|---------|----------------|
-| **Credentials** | Regenerates on every restart | Static, never changes |
-| **After restart** | Run setup script, update notebooks | Just start containers |
-| **Maturity** | Newer, still evolving | 15+ years in production |
-| **Protocol** | REST API | Thrift |
-| **Access control** | Built-in, granular | Needs external tools (Ranger) |
-| **Modern features** | Multi-catalog, view support | Basic catalog operations |
-
-**When to use Polaris:** You need fine-grained access control, multi-catalog organization, or want the newest features.
-
-**When to use Hive Metastore:** You want stability, zero maintenance, and don't want to deal with credential rotation. Perfect for learning and development.
-
-For most learning and development scenarios, Hive Metastore is the pragmatic choice. It's boring in the best way - you set it up once and forget it exists.
-
 ## Quick Start
 
 **First time setup:**
 
+### macOS / Linux
+
 ```bash
 ./setup.sh
+```
+
+### Windows (PowerShell)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
 This downloads required JARs, creates all containers, and waits for everything to be healthy.
@@ -70,12 +37,33 @@ Open http://localhost:8888 and run `notebooks/getting_started.ipynb`.
 
 ### Manual Start (if you prefer)
 
+#### macOS / Linux
+
 ```bash
 # One-time setup: download required JARs
 mkdir -p lib
 curl -sL -o lib/postgresql-42.6.0.jar https://jdbc.postgresql.org/download/postgresql-42.6.0.jar
 curl -sL -o lib/hadoop-aws-3.3.4.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar
 curl -sL -o lib/aws-java-sdk-bundle-1.12.262.jar https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar
+
+# Start infrastructure
+docker-compose up -d
+
+# Wait for "Starting Hive Metastore Server" in logs
+docker-compose logs -f hive-metastore
+
+# Start Jupyter (in a new terminal)
+docker-compose -f spark-notebook.yml up -d
+```
+
+#### Windows (PowerShell)
+
+```powershell
+# One-time setup: download required JARs
+New-Item -ItemType Directory -Path lib -Force
+Invoke-WebRequest -Uri "https://jdbc.postgresql.org/download/postgresql-42.6.0.jar" -OutFile "lib\postgresql-42.6.0.jar"
+Invoke-WebRequest -Uri "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar" -OutFile "lib\hadoop-aws-3.3.4.jar"
+Invoke-WebRequest -Uri "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar" -OutFile "lib\aws-java-sdk-bundle-1.12.262.jar"
 
 # Start infrastructure
 docker-compose up -d
@@ -107,11 +95,13 @@ Docker volumes store:
 - **postgres_data** - All your databases, tables, schemas, column definitions
 - **minio_data** - Your actual Parquet files and Iceberg metadata
 
-Restart Docker, restart your machine, come back a week later - your data is exactly where you left it. No setup scripts to re-run, no credentials to update, no catalogs to recreate.
+Restart Docker, restart your machine, come back a week later—your data is exactly where you left it. No setup scripts to re-run, no credentials to update, no catalogs to recreate.
 
 This is how production systems work. You set them up once and they keep running.
 
 ## Daily Usage
+
+### macOS / Linux
 
 ```bash
 # End of day - stop containers (preserves everything)
@@ -121,30 +111,48 @@ This is how production systems work. You set them up once and they keep running.
 ./start.sh
 ```
 
+### Windows (PowerShell)
+
+```powershell
+# End of day - stop containers (preserves everything)
+.\stop.ps1
+
+# Next day - start containers again
+.\start.ps1
+```
+
 Containers are stopped but preserved. All your data, tables, and settings remain intact.
 
 ## Complete Cleanup
 
 To wipe everything and start completely fresh:
 
+### macOS / Linux
+
 ```bash
 ./nuke.sh
 ```
 
-This removes all containers, volumes, and data. Run `./setup.sh` afterwards to create fresh containers.
+### Windows (PowerShell)
+
+```powershell
+.\nuke.ps1
+```
+
+This removes all containers, volumes, and data. Run `./setup.sh` (or `.\setup.ps1` on Windows) afterwards to create fresh containers.
 
 ## Script Reference
 
-| Script | Purpose | When to use |
-|--------|---------|-------------|
-| `./setup.sh` | Create containers + download JARs | First time setup only |
-| `./start.sh` | Start existing containers | Daily - beginning of day |
-| `./stop.sh` | Stop containers (preserves them) | Daily - end of day |
-| `./nuke.sh` | Delete everything (containers + data) | When you want a fresh start |
+| Script | Windows | Purpose | When to use |
+|--------|---------|---------|-------------|
+| `./setup.sh` | `.\setup.ps1` | Create containers + download JARs | First time setup only |
+| `./start.sh` | `.\start.ps1` | Start existing containers | Daily—beginning of day |
+| `./stop.sh` | `.\stop.ps1` | Stop containers (preserves them) | Daily—end of day |
+| `./nuke.sh` | `.\nuke.ps1` | Delete everything (containers + data) | When you want a fresh start |
 
 ## Why These Specific JARs?
 
-The `apache/hive:4.0.0` Docker image is minimal - it doesn't include drivers for PostgreSQL or S3-compatible storage. We mount three JARs:
+The `apache/hive:4.0.0` Docker image is minimal—it doesn't include drivers for PostgreSQL or S3-compatible storage. We mount three JARs:
 
 | JAR | Purpose |
 |-----|---------|
@@ -152,7 +160,7 @@ The `apache/hive:4.0.0` Docker image is minimal - it doesn't include drivers for
 | `hadoop-aws-3.3.4.jar` | S3AFileSystem class for MinIO/S3 storage |
 | `aws-java-sdk-bundle-1.12.262.jar` | AWS SDK that hadoop-aws depends on |
 
-Without these, Hive Metastore fails with cryptic ClassNotFoundException errors. The `start.sh` script downloads them automatically on first run.
+Without these, Hive Metastore fails with cryptic ClassNotFoundException errors. The `setup.sh` script downloads them automatically on first run.
 
 ## Troubleshooting
 
@@ -160,17 +168,32 @@ Without these, Hive Metastore fails with cryptic ClassNotFoundException errors. 
 
 **Most common cause:** Missing JARs. Check they exist:
 
+**macOS / Linux:**
 ```bash
 ls -la lib/
 ```
 
+**Windows (PowerShell):**
+```powershell
+Get-ChildItem lib\
+```
+
 You should see three JAR files. If any are missing, download them:
 
+**macOS / Linux:**
 ```bash
 mkdir -p lib
 curl -sL -o lib/postgresql-42.6.0.jar https://jdbc.postgresql.org/download/postgresql-42.6.0.jar
 curl -sL -o lib/hadoop-aws-3.3.4.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar
 curl -sL -o lib/aws-java-sdk-bundle-1.12.262.jar https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar
+```
+
+**Windows (PowerShell):**
+```powershell
+New-Item -ItemType Directory -Path lib -Force
+Invoke-WebRequest -Uri "https://jdbc.postgresql.org/download/postgresql-42.6.0.jar" -OutFile "lib\postgresql-42.6.0.jar"
+Invoke-WebRequest -Uri "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar" -OutFile "lib\hadoop-aws-3.3.4.jar"
+Invoke-WebRequest -Uri "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar" -OutFile "lib\aws-java-sdk-bundle-1.12.262.jar"
 ```
 
 Then restart:
@@ -230,10 +253,14 @@ Should show "Bucket warehouse created successfully".
 MINIO-HIVE-LAKEHOUSE/
 ├── docker-compose.yml      # PostgreSQL, MinIO, Hive Metastore
 ├── spark-notebook.yml      # Jupyter + Spark
-├── setup.sh               # First-time setup (creates containers)
-├── start.sh               # Start stopped containers
-├── stop.sh                # Stop containers (preserves them)
-├── nuke.sh                # Delete everything including data
+├── setup.sh               # First-time setup (macOS/Linux)
+├── setup.ps1              # First-time setup (Windows)
+├── start.sh               # Start stopped containers (macOS/Linux)
+├── start.ps1              # Start stopped containers (Windows)
+├── stop.sh                # Stop containers (macOS/Linux)
+├── stop.ps1               # Stop containers (Windows)
+├── nuke.sh                # Delete everything (macOS/Linux)
+├── nuke.ps1               # Delete everything (Windows)
 ├── conf/
 │   ├── hive-site.xml      # Hive Metastore configuration
 │   ├── core-site.xml      # Hadoop S3A configuration
