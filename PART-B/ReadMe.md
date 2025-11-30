@@ -232,7 +232,7 @@ Follow these phases in order:
 Start with [Phase 1: Data Modeling](data-modeling/schema-design.md)
     │   └── crypto_pipeline.py
     └── logs/
-```
+
 *   **Sorting & Z-Ordering:** Organize data so Spark skips 90% of files during filtered queries.
 
 ### 7. Extensions (Expanding your setup)
