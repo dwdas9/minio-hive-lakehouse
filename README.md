@@ -31,6 +31,11 @@ chmod +x setup.sh start.sh stop.sh nuke.sh
 ./setup.sh
 ```
 
+If all works well, you will be able to open the Jupyter notebook and run Spark queries.
+
+![](images/20251130162734.png)
+
+
 ### Windows (PowerShell)
 
 ```powershell
