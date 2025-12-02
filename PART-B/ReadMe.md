@@ -1,250 +1,445 @@
 # PART-B: Real-Time Crypto Analytics
 
-**← [Back to Main Repository](../README.md) | Prerequisites: Complete [PART-A](../PART-A/README.md) first**
+**← [Back to Main Repository](../README.md) | ⚠️ Prerequisites: [Complete PART-A first](../PART-A/README.md)**
 
-This is the **analytics layer** of the lakehouse. It teaches building a real-time cryptocurrency analytics platform using **live data** from public APIs, processed with **Spark Structured Streaming**, stored in **Iceberg tables** on **MinIO**, transformed with **dbt**, and orchestrated with **Airflow**.
+This tutorial builds a **production-grade real-time analytics platform** that streams live cryptocurrency prices from public APIs into your lakehouse. You'll learn by doing—starting from data modeling and progressing to real-time streaming ingestion.
 
-## What You'll Learn
+## What You'll Build
 
-1. **Data Modeling** - Design Bronze/Silver/Gold layers and dimensional models
-2. **Streaming Ingestion** - Kafka producers consuming real-time crypto APIs
-3. **Spark Structured Streaming** - Process data as it arrives
-4. **dbt Transformations** - Clean, model, and test your data
-5. **Orchestration** - Airflow to schedule and monitor everything
-6. **Performance** - Iceberg features (compaction, time travel, partitioning)
+A streaming data pipeline that:
+- Fetches live crypto prices from CoinGecko API every 30 seconds
+- Streams data through Kafka into your lakehouse
+- Stores raw data in Iceberg tables on MinIO
+- Processes millions of records with Spark Structured Streaming
+- Applies medallion architecture (Bronze/Silver/Gold layers)
 
-## Architecture
-
-```
-CoinGecko API (live prices)
-    ↓
-Kafka (streaming buffer)
-    ↓
-Spark Structured Streaming
-    ↓
-Iceberg Tables in MinIO
-    ↓
-dbt (transformations)
-    ↓
-Analytics & Dashboards
-```
-
-**Network:** All services connect via `dasnet` to share MinIO and Hive Metastore from the main lakehouse.
-
-## Project Structure
+## Architecture Overview
 
 ```
-learning/
-├── README.md                    # This file
-├── docker-compose.yml           # Kafka, Airflow, producers
-├── setup.ps1                    # Windows setup script
-├── setup.sh                     # Mac/Linux setup script
-├── data-modeling/
-│   ├── schema-design.md         # Bronze/Silver/Gold design
-│   ├── dimensional-model.md     # Fact and dimension tables
-│   └── diagrams/                # ERD diagrams
-├── producers/
-│   ├── crypto_producer.py       # Fetches prices, sends to Kafka
-│   ├── requirements.txt
-│   └── Dockerfile
-├── streaming/
-│   ├── bronze_ingestion.py      # Kafka → Bronze Iceberg
-│   └── notebooks/
-│       └── streaming_setup.ipynb
-├── dbt_crypto/
-│   ├── dbt_project.yml
-│   ├── profiles.yml
-│   ├── models/
-│   │   ├── bronze/              # Raw data models
-│   │   ├── silver/              # Cleaned models
-│   │   └── gold/                # Fact/dimension tables
-│   ├── tests/
-│   └── docs/
-└── airflow/
-    ├── dags/
-    │   └── crypto_pipeline.py
-    └── logs/
+┌─────────────────┐
+│  CoinGecko API  │  Live crypto prices (free tier)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Crypto Producer │  Python service polling API
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│      Kafka      │  Streaming message queue
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Spark Streaming │  Real-time data processing
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Iceberg Tables  │  ACID transactions on MinIO
+│   (MinIO)       │  Bronze → Silver → Gold
+└─────────────────┘
 ```
 
-## Phase 1: Data Modeling (Start Here)
+**Network:** All services run on the `dasnet` Docker network created by PART-A. This lets them access MinIO and Hive Metastore from the core infrastructure.
 
-Before writing code, we design our schema. This is how real projects begin.
-
-### The Business Requirements
-
-**Goal:** Build a real-time analytics platform for cryptocurrency trading.
-
-**Questions We Need to Answer:**
-1. What is Bitcoin's current price and how has it changed in the last hour?
-2. Which crypto has the highest volatility today?
-3. What was Ethereum's price exactly 2 hours ago? (Time Travel)
-4. Alert me when any coin drops more than 5% in 10 minutes
-5. What is the 24-hour trading volume for the top 10 coins?
-
-### The Medallion Architecture
-
-We follow the industry-standard pattern:
-
-#### **Bronze Layer - Raw Landing Zone**
-
-Tables that capture data exactly as received from APIs:
-
-**`bronze.crypto_ticks_raw`**
-- Purpose: Every API response, stored as-is
-- Schema: JSON blob + ingestion timestamp
-- Partitioned by: `ingestion_date`
-- Retention: 30 days (then archive to cold storage)
-
-#### **Silver Layer - Cleaned & Validated**
-
-Tables with business logic applied:
-
-**`silver.crypto_prices_clean`**
-- Purpose: Typed, validated, deduplicated prices
-- Schema: Structured columns (symbol, price, volume, timestamp)
-- Deduplication: Latest price per symbol per minute
-- Partitioned by: `price_date`
-- Quality checks: No nulls in price, timestamp within 5 minutes of ingestion
-
-#### **Gold Layer - Analytics-Ready**
-
-Dimensional model optimized for queries:
-
-**Fact Tables:**
-
-**`gold.fact_crypto_ticks`**
-- Grain: One row per price update
-- Measures: price_usd, volume_24h, market_cap, percent_change_1h
-- Foreign keys: crypto_id, time_id
-- Partitioned by: price_date
-
-**`gold.fact_crypto_hourly`**
-- Grain: One row per crypto per hour
-- Measures: open, high, low, close, avg_price, total_volume
-- Aggregated from: fact_crypto_ticks
-- Partitioned by: hour_date
-
-**Dimension Tables:**
-
-**`gold.dim_crypto`** (SCD Type 2)
-- Attributes: symbol, name, category, market_cap_rank
-- SCD Type 2: Track when coins get delisted or renamed
-- Columns: crypto_id, symbol, name, category, valid_from, valid_to, is_current
-
-**`gold.dim_time`**
-- Attributes: timestamp, hour, day, week, month, quarter, year, is_trading_hour
-- Pre-populated for fast joins
-- Granularity: Per minute
-
-### Data Flow
-
-```
-1. CoinGecko API → Kafka topic: 'crypto.prices.raw'
-2. Spark Streaming → bronze.crypto_ticks_raw (append mode)
-3. dbt incremental → silver.crypto_prices_clean
-4. dbt transformation → gold.fact_crypto_ticks
-5. dbt aggregation → gold.fact_crypto_hourly
-6. dbt dimension → gold.dim_crypto (SCD Type 2)
-```
+---
 
 ## Quick Start
 
-### Prerequisites
+### Step 1: Verify PART-A is Running
 
-Your main lakehouse must be running (MinIO, Hive, PostgreSQL on `dasnet`).
-
-### Setup
-
-**Windows:**
-```powershell
-cd learning
-powershell -ExecutionPolicy Bypass -File .\setup.ps1
-```
-
-**Mac/Linux:**
-```bash
-cd learning
-./setup.sh
-```
-
-This will:
-1. Start Kafka and Zookeeper
-2. Create Kafka topics
-3. Start the crypto price producer
-4. Set up Airflow
-
-### Verify
+Before starting PART-B, ensure your core lakehouse is operational:
 
 ```bash
-# Check Kafka UI
-http://localhost:8080
-
-# Check Airflow
-http://localhost:8081
+docker ps --filter "name=hive-minio" --filter "name=hive-metastore"
 ```
 
-## Learning Path
+You should see both containers running. If not, start PART-A first:
+- **Mac/Linux:** `cd PART-A && ./start.sh`
+- **Windows:** `cd PART-A; ./start.ps1`
 
-Follow these phases in order:
+### Step 2: Launch Kafka & Crypto Producer
 
-### Phase 1: Data Modeling (2-3 hours)
-- Read `data-modeling/schema-design.md`
-- Design your Bronze/Silver/Gold tables
-- Draw the dimensional model
+| OS         | Commands                                                                                  |
+|------------|-------------------------------------------------------------------------------------------|
+| Mac/Linux  | `cd PART-B`<br>`chmod +x setup.sh`<br>`./setup.sh`                                        |
+| Windows    | `cd PART-B`<br>`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`<br>`./setup.ps1`|
 
-### Phase 2: Streaming Setup (3-4 hours)
-- Start the crypto producer
-- Build Spark Structured Streaming job
-- Watch data flow into Bronze tables
+The setup script will:
+1. Check PART-A is running
+2. Verify the `dasnet` network exists
+3. Start Zookeeper and Kafka
+4. Build and start the crypto price producer
+5. Display service URLs
 
-### Phase 3: dbt Transformations (4-6 hours)
-- Set up dbt project
-- Build Silver cleaning models
-- Build Gold fact/dimension tables
-- Add tests and documentation
+### Step 3: Verify Everything is Running
 
-### Phase 4: Orchestration (2-3 hours)
-- Create Airflow DAG
-- Schedule Bronze → Silver → Gold pipeline
-- Add monitoring and alerts
+Check all containers are healthy:
 
-### Phase 5: Advanced Features (4-6 hours)
-- Implement time travel queries
-- Add Z-ordering for performance
-- Run compaction jobs
-- Build real-time alerts
+```bash
+docker ps | grep crypto
+```
 
-## What Makes This Real
+You should see:
+- `crypto-zookeeper` - Running
+- `crypto-kafka` - Running (healthy)
+- `crypto-kafka-ui` - Running
+- `crypto-producer` - Running
 
-**Not a tutorial project:**
-- No pre-cleaned CSV files
-- No "assume the data is perfect"
-- No skipping the hard parts
+### Step 4: Access Services
 
-**Real production scenarios:**
-- API rate limits and failures
-- Late-arriving data
-- Schema changes
-- Duplicate records
-- Missing values
-- Performance optimization
+| Service | URL | What You'll See |
+|---------|-----|-----------------|
+| Kafka UI | http://localhost:8080 | Topics, messages, consumer groups |
+| Jupyter Notebook | http://localhost:8888 | From PART-A (for Spark queries) |
+
+Open Kafka UI and look for the topic `crypto.prices.raw`. You should see messages flowing in every 30 seconds.
+
+---
+
+## Tutorial: Phase 1 - Understanding the Data
+
+Before writing any code, let's understand what data we're working with.
+
+### What Data Are We Getting?
+
+The crypto producer fetches data from CoinGecko's free API:
+```
+GET https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true
+```
+
+**Sample Response:**
+```json
+{
+  "bitcoin": {
+    "usd": 43250.50,
+    "usd_24h_vol": 28500000000,
+    "usd_24h_change": 2.34
+  },
+  "ethereum": {
+    "usd": 2280.75,
+    "usd_24h_vol": 15200000000,
+    "usd_24h_change": -1.12
+  }
+}
+```
+
+### View Real Data in Kafka
+
+1. Open Kafka UI: http://localhost:8080
+2. Click on **Topics** → `crypto.prices.raw`
+3. Click **Messages** tab
+4. You'll see JSON messages with structure:
+   ```json
+   {
+     "timestamp": "2025-12-02T10:30:15Z",
+     "source": "coingecko",
+     "data": {
+       "bitcoin": {...},
+       "ethereum": {...}
+     }
+   }
+   ```
+
+**Key Observations:**
+- Messages arrive every 30 seconds
+- Each message contains multiple cryptocurrencies
+- Prices change in real-time
+- Data includes volume and 24h change
+
+---
+
+## Tutorial: Phase 2 - Data Modeling
+
+Real projects start with design, not code. Let's plan our tables.
+
+### The Medallion Architecture
+
+We'll organize data into three layers:
+
+| Layer | Purpose | Data Quality |
+|-------|---------|--------------|
+| **Bronze** | Raw data exactly as received | Uncleaned, complete history |
+| **Silver** | Cleaned, validated, typed | Business rules applied |
+| **Gold** | Aggregated, analytics-ready | Optimized for queries |
+
+### Bronze Layer Design
+
+**Table:** `bronze.crypto_ticks_raw`
+
+Stores every Kafka message as-is. This is your audit trail—never delete or modify Bronze data.
+
+```sql
+CREATE TABLE bronze.crypto_ticks_raw (
+    raw_payload STRING,              -- Complete JSON from Kafka
+    ingestion_timestamp TIMESTAMP,   -- When we wrote to Iceberg
+    kafka_offset BIGINT,             -- Kafka message offset
+    kafka_partition INT              -- Kafka partition number
+)
+PARTITIONED BY (days(ingestion_timestamp));
+```
+
+**Why this design?**
+- `raw_payload` as STRING preserves everything, even malformed JSON
+- Kafka metadata (`offset`, `partition`) enables exactly-once processing
+- Partitioned by ingestion date for efficient querying and retention management
+
+📖 **Deep Dive:** See [data-modeling/schema-design.md](data-modeling/schema-design.md) for complete Bronze/Silver/Gold table designs.
+
+### Silver Layer Design
+
+**Table:** `silver.crypto_prices_clean`
+
+Parsed, validated, and typed data ready for analytics.
+
+```sql
+CREATE TABLE silver.crypto_prices_clean (
+    crypto_symbol STRING,
+    price_usd DECIMAL(18, 8),
+    volume_24h DECIMAL(20, 2),
+    percent_change_24h DECIMAL(10, 4),
+    api_timestamp TIMESTAMP,
+    processing_timestamp TIMESTAMP
+)
+PARTITIONED BY (days(api_timestamp));
+```
+
+**Transformations applied:**
+- Parse JSON from `raw_payload`
+- Validate: price > 0, timestamp reasonable
+- Deduplicate: keep latest per symbol per minute
+- Type conversion: string → decimal/timestamp
+
+📖 **Deep Dive:** See [data-modeling/dimensional-model.md](data-modeling/dimensional-model.md) for the complete star schema with fact and dimension tables.
+
+---
+
+## Tutorial: Phase 3 - Streaming Ingestion (Bronze Layer)
+
+Now let's write data from Kafka into Iceberg tables.
+
+### Open Jupyter Notebook
+
+1. Navigate to http://localhost:8888
+2. Create a new notebook: **New** → **Python 3**
+3. Name it `crypto_streaming_bronze.ipynb`
+
+### Initialize Spark with Iceberg
+
+```python
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder \
+    .appName("CryptoStreamingBronze") \
+    .config("spark.jars.packages", 
+            "org.apache.iceberg:iceberg-spark-runtime-3.3_2.12:1.4.2,"
+            "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.2") \
+    .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+    .config("spark.sql.catalog.spark_catalog.type", "hive") \
+    .config("spark.sql.catalog.spark_catalog.uri", "thrift://hive-metastore:9083") \
+    .getOrCreate()
+
+print("Spark session created with Iceberg support")
+```
+
+### Read from Kafka
+
+```python
+# Read streaming data from Kafka
+kafka_df = spark.readStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", "kafka:29092") \
+    .option("subscribe", "crypto.prices.raw") \
+    .option("startingOffsets", "latest") \
+    .load()
+
+# Kafka gives us binary data - convert to string
+from pyspark.sql.functions import col, current_timestamp
+
+bronze_df = kafka_df.select(
+    col("value").cast("string").alias("raw_payload"),
+    current_timestamp().alias("ingestion_timestamp"),
+    col("offset").alias("kafka_offset"),
+    col("partition").alias("kafka_partition")
+)
+
+# Show schema
+bronze_df.printSchema()
+```
+
+### Create Bronze Database and Table
+
+```python
+# Create database if not exists
+spark.sql("CREATE DATABASE IF NOT EXISTS bronze")
+
+# Create Iceberg table
+spark.sql("""
+CREATE TABLE IF NOT EXISTS bronze.crypto_ticks_raw (
+    raw_payload STRING,
+    ingestion_timestamp TIMESTAMP,
+    kafka_offset BIGINT,
+    kafka_partition INT
+)
+USING iceberg
+PARTITIONED BY (days(ingestion_timestamp))
+""")
+
+print("Bronze table created successfully")
+```
+
+### Write Stream to Iceberg
+
+```python
+# Write stream to Iceberg table
+query = bronze_df.writeStream \
+    .format("iceberg") \
+    .outputMode("append") \
+    .option("path", "bronze.crypto_ticks_raw") \
+    .option("checkpointLocation", "/tmp/checkpoint/bronze_crypto") \
+    .trigger(processingTime="30 seconds") \
+    .start()
+
+print("Streaming query started. Data is being written to Bronze table.")
+print(f"Query ID: {query.id}")
+```
+
+### Monitor the Stream
+
+```python
+# Check query status
+query.status
+
+# See recent progress
+query.recentProgress
+```
+
+**In another notebook cell**, query the Bronze table:
+
+```python
+# Read from Bronze table
+spark.sql("SELECT COUNT(*) as row_count FROM bronze.crypto_ticks_raw").show()
+
+# See latest records
+spark.sql("""
+SELECT 
+    raw_payload,
+    ingestion_timestamp,
+    kafka_offset
+FROM bronze.crypto_ticks_raw 
+ORDER BY ingestion_timestamp DESC 
+LIMIT 5
+""").show(truncate=False)
+```
+
+**What you should see:**
+- Row count increasing every 30 seconds
+- JSON data in `raw_payload` column
+- Timestamps showing when data was ingested
+
+🎉 **Congratulations!** You've built a real-time streaming pipeline from Kafka to Iceberg.
+
+---
+
+## What's Working vs. What's Planned
+
+### ✅ Currently Implemented
+
+| Component | Status | What Works |
+|-----------|--------|------------|
+| Kafka Stack | ✅ Complete | Zookeeper, Kafka, Kafka UI running |
+| Crypto Producer | ✅ Complete | Fetches live prices every 30s from CoinGecko |
+| Data Modeling Docs | ✅ Complete | Bronze/Silver/Gold schemas documented |
+| Bronze Ingestion | ✅ Tutorial Ready | Step-by-step guide above |
+
+### 🚧 Planned for Future Updates
+
+| Component | Status | What's Needed |
+|-----------|--------|---------------|
+| Silver Layer | 📝 Documented | Need transformation notebook/script |
+| Gold Layer | 📝 Documented | Need dbt project setup |
+| Airflow Orchestration | 🔜 Planned | DAG for end-to-end pipeline |
+| Time Travel Queries | 🔜 Planned | Examples using Iceberg snapshots |
+| Performance Tuning | 🔜 Planned | Compaction, Z-ordering examples |
+
+---
 
 ## Next Steps
 
-Start with [Phase 1: Data Modeling](data-modeling/schema-design.md)
-    │   └── crypto_pipeline.py
-    └── logs/
+### Continue Learning
 
-*   **Sorting & Z-Ordering:** Organize data so Spark skips 90% of files during filtered queries.
+1. **Practice Bronze Ingestion:** Run the tutorial above and let data accumulate for 10-15 minutes
+2. **Explore the Data:** 
+   - Query Bronze tables with different time ranges
+   - Count records per partition
+   - Parse JSON and extract specific coins
+3. **Study the Schema Designs:**
+   - Read [data-modeling/schema-design.md](data-modeling/schema-design.md)
+   - Understand why each table is partitioned differently
+   - Review the data quality rules for Silver layer
+4. **Design Silver Transformations:**
+   - How would you parse the JSON?
+   - What validations would you add?
+   - How would you handle duplicate records?
 
-### 7. Extensions (Expanding your setup)
-*   **Streaming:** Add **Kafka** for real-time Bronze ingestion.
-*   **Orchestration:** Use **Airflow** or **Dagster** to schedule pipelines.
-*   **Data Quality:** Add **Great Expectations** for validation.
+### Stop the Services
 
-### Your First Project: "The E-Commerce Pipeline"
-1.  **Generate Data:** Python script creates fake Orders (JSON) and uploads to MinIO.
-2.  **Ingest (Bronze):** Spark job reads JSONs into Iceberg table `orders_bronze`.
-3.  **Clean (Silver):** Spark job cleans data, filters invalid orders, merges into `orders_silver`.
-4.  **Model (Gold):** Use dbt to build fact/dimension tables and calculate "Total Sales per Minute".
+When you're done experimenting:
+
+```bash
+# Stop PART-B (preserves data)
+docker-compose down
+
+# Stop PART-A
+cd ../PART-A
+./stop.sh    # Mac/Linux
+./stop.ps1   # Windows
+```
+
+All data is preserved in Docker volumes. Restart anytime with `./start.sh` (PART-A) and `docker-compose up -d` (PART-B).
+
+---
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "Network dasnet not found" | Start PART-A first: `cd PART-A && ./start.sh` |
+| Crypto producer not sending data | Check logs: `docker logs crypto-producer` |
+| Kafka UI shows no messages | Wait 30 seconds for first API call, refresh page |
+| Spark can't connect to Kafka | Ensure Kafka is healthy: `docker ps \| grep kafka` |
+| "Table already exists" error | Normal - Iceberg tables persist across restarts |
+
+### View Logs
+
+```bash
+# Producer logs (shows API calls)
+docker logs -f crypto-producer
+
+# Kafka logs
+docker logs -f crypto-kafka
+
+# All PART-B services
+docker-compose logs -f
+```
+
+---
+
+## Contributing
+
+Found a bug or have suggestions? This is a learning project—your feedback helps everyone. Open an issue or submit a pull request!
+
+---
+
+## What Makes This Real
+
+Unlike typical tutorials, this project uses:
+- ✅ **Real APIs** - Live data from CoinGecko (not CSV files)
+- ✅ **Production Patterns** - Medallion architecture, proper partitioning
+- ✅ **Real Challenges** - API rate limits, late data, duplicates
+- ✅ **Industry Tools** - Kafka, Spark, Iceberg, not toy examples
+
+**You're learning production skills, not just following scripts.**
 
