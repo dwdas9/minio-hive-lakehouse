@@ -1,5 +1,8 @@
-# MinIO + Hive Metastore + Iceberg Lakehouse
-This repository provides a Docker-based setup for a data lakehouse using Apache Iceberg, with MinIO for object storage and Hive Metastore as the catalog. It includes a Jupyter notebook environment with PySpark for interactive querying and data manipulation. The best part of this setup is that it's fully on-premises with no cloud dependencies. It gives you a better understanding of the components compared to a cloud setup, where most services are black boxes.
+# PART-A: Core Lakehouse Infrastructure
+
+**← [Back to Main Repository](../README.md)**
+
+This is the **foundation layer** of the MinIO + Hive Metastore + Iceberg Lakehouse. It provides a Docker-based setup with MinIO for object storage, Hive Metastore as the catalog, PostgreSQL for metadata, and Jupyter notebook with PySpark for interactive querying. The setup is fully on-premises with no cloud dependencies, giving you better understanding of components compared to cloud services.
 
 ## Why This Setup?
 

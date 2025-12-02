@@ -1,6 +1,8 @@
-# Real-Time Crypto Analytics
+# PART-B: Real-Time Crypto Analytics
 
-This project teaches building a real-time cryptocurrency analytics platform. We use **live data** from public APIs, process it with **Spark Structured Streaming**, store it in **Iceberg tables** on **MinIO**, transform with **dbt**, and orchestrate with **Airflow**.
+**← [Back to Main Repository](../README.md) | Prerequisites: Complete [PART-A](../PART-A/README.md) first**
+
+This is the **analytics layer** of the lakehouse. It teaches building a real-time cryptocurrency analytics platform using **live data** from public APIs, processed with **Spark Structured Streaming**, stored in **Iceberg tables** on **MinIO**, transformed with **dbt**, and orchestrated with **Airflow**.
 
 ## What You'll Learn
 

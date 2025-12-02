@@ -16,9 +16,14 @@ Welcome to my repo. Here, I tried to create a complete, production-ready data la
 - Data transformations with dbt and Spark SQL
 - Orchestrating workflows with Airflow
 
-**Two Core Components:**
-- **PART-A**: Foundation layer (storage, metadata, processing)
-- **PART-B**: Real-time analytics layer (streaming, transformations, orchestration)
+## Start Here: Choose Your Path
+
+This repository is organized into two main parts. **Start with PART-A first**, then optionally add PART-B.
+
+| Part | Purpose | Documentation |
+|------|---------|---------------|
+| **PART-A** | Foundation layer: Storage, metadata catalog, processing engine | 📖 [Go to PART-A →](PART-A/README.md) |
+| **PART-B** | Real-time analytics: Streaming, transformations, orchestration | 📖 [Go to PART-B →](PART-B/ReadMe.md) |
 
 
 ## Quick Start
