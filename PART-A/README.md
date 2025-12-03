@@ -22,6 +22,14 @@ The recommended approach for a lakehouse catalog using Iceberg is Polaris. Howev
 
 ## First time setup
 
+**Use `setup.sh` (Mac/Linux) or `setup.ps1` (Windows) for first-time installation only.**
+
+These scripts:
+1. Download required JAR files (~50MB) to `lib/` folder
+2. Create all Docker containers
+3. Wait for services to be healthy
+4. Start Jupyter notebook
+
 ### macOS / Linux
 ```bash
 # Open terminal, navigate to this folder, and run:
@@ -42,7 +50,8 @@ If all works well, you will be able to open the Jupyter notebook and run Spark q
 ### Windows (PowerShell)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\setup.ps1
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\setup.ps1
 ```
 
 This downloads required JARs, creates all containers, and waits for everything to be healthy.
@@ -191,6 +200,19 @@ If any service is missing, use the start scripts:
 ```
 
 Containers are stopped but preserved. All your data, tables, and settings remain intact.
+
+---
+
+## Scripts Reference
+
+| Script | When to Use | What It Does |
+|--------|-------------|-------------|
+| `setup.sh`/`setup.ps1` | **First time only** | Downloads JARs, creates containers, waits for health checks |
+| `start.sh`/`start.ps1` | **Daily use** | Starts containers (creates if missing), much faster than setup |
+| `stop.sh`/`stop.ps1` | **End of day** | Stops containers, preserves all data |
+| `nuke.sh`/`nuke.ps1` | **Complete reset** | Deletes everything (containers, volumes, data) |
+
+**Tip:** After first-time setup, always use `start.sh`/`start.ps1` for daily work. Only run setup again if you've run nuke or deleted the `lib/` folder.
 
 ## Complete Cleanup
 
