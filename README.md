@@ -30,10 +30,25 @@ This repository is organized into two main parts. **Start with PART-A first**, t
 
 ### 1. Setup Core Infrastructure (PART-A)
 
-| OS         | Command(s)                                                                                 |
-|------------|--------------------------------------------------------------------------------------------|
-| Mac/Linux  | `cd PART-A`<br>`chmod +x setup.sh`<br>`./setup.sh`                                         |
-| Windows    | `cd PART-A`<br>`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`<br>`./setup.ps1`|
+**First time only:** Use setup scripts to download required JARs and create containers.
+
+| OS         | Command(s)                                                                                  |
+|------------|------------------------------------------------------------------------------------------|
+| Mac/Linux  | `cd PART-A`<br>`chmod +x setup.sh`<br>`./setup.sh`                                        |
+| Windows    | `cd PART-A`<br>`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`<br>`./setup.ps1` |
+
+**What setup does:**
+- Downloads 3 required JAR files (~50MB) to `lib/` folder
+- Creates and starts all containers
+- Waits for services to be healthy
+- Starts Jupyter notebook
+
+**Daily use after setup:** Use start scripts (much faster, no downloads).
+
+| OS         | Command(s)                     |
+|------------|--------------------------------|
+| Mac/Linux  | `cd PART-A`<br>`./start.sh`    |
+| Windows    | `cd PART-A`<br>`./start.ps1`   |
 
 This creates the base lakehouse with MinIO, Hive, and Spark.
 
