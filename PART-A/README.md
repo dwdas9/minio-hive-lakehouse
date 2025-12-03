@@ -142,6 +142,32 @@ Restart Docker, restart your machine, come back a week later—your data is exac
 
 This is how production systems work. You set them up once and they keep running.
 
+### Auto-Restart After Machine Reboot
+
+All containers are configured with `restart: unless-stopped`. After rebooting your machine:
+
+1. **Docker Desktop starts automatically** (if configured in Docker settings)
+2. **All containers restart automatically** in dependency order
+3. **Wait 30-60 seconds** for health checks to pass
+4. **Services are ready** - no manual intervention needed
+
+**Verify all services are running:**
+```bash
+docker ps --filter "name=hive"
+```
+
+You should see:
+- ✅ `hive-postgres` - Running
+- ✅ `hive-minio` - Running (healthy)
+- ✅ `hive-metastore` - Running
+- ✅ `hive-spark-notebook` - Running
+
+If any service is missing, use the start scripts:
+```bash
+./start.sh    # Mac/Linux
+./start.ps1   # Windows
+```
+
 ## Daily Usage
 
 ### macOS / Linux

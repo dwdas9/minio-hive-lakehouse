@@ -83,6 +83,24 @@ This creates the base lakehouse with MinIO, Hive, and Spark.
 
 Stopping containers preserves data. Only `./nuke.sh`/`./nuke.ps1` removes data permanently.
 
+### After Machine Restart
+
+All services are configured with `restart: unless-stopped` policy. This means:
+- ✅ **Containers restart automatically** after machine reboot
+- ✅ **All data persists** in Docker volumes
+- ⚠️ **Wait 30-60 seconds** for all services to become healthy
+
+If any service fails to start after reboot:
+```bash
+# Check container status
+docker ps -a
+
+# Restart all services
+cd PART-A
+./start.sh    # Mac/Linux
+./start.ps1   # Windows
+```
+
 ## Network Architecture
 
 | Network | Role |

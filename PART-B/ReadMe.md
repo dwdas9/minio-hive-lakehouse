@@ -400,6 +400,26 @@ cd ../PART-A
 
 All data is preserved in Docker volumes. Restart anytime with `./start.sh` (PART-A) and `docker-compose up -d` (PART-B).
 
+### After Machine Restart
+
+Both PART-A and PART-B containers are configured with `restart: unless-stopped`. After rebooting:
+
+1. **Docker Desktop starts** (if configured in settings)
+2. **All containers restart automatically** in the correct order
+3. **Wait 30-60 seconds** for Kafka to become healthy
+4. **Check status:**
+   ```bash
+   docker ps | grep crypto
+   ```
+
+If any service fails to start:
+```bash
+# Restart PART-B services
+cd PART-B
+docker-compose down
+docker-compose up -d
+```
+
 ---
 
 ## Troubleshooting
