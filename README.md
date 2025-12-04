@@ -148,15 +148,18 @@ Your work is safe across restarts. Docker volumes preserve everything:
 
 Stopping containers preserves all data. Only `./nuke.sh`/`./nuke.ps1` deletes everything.
 
-### After Machine Restart
+### After Machine/Docker Restart
 
-**Good news:** All containers now auto-restart when your machine reboots. 
+Just restart Docker Desktop. All services automatically restart with the `restart: unless-stopped` policy, ensuring containers start automatically when Docker boots, dependencies initialize in the correct order (Postgres → Hive → Spark), and all your data persists across restarts.
 
-All services use `restart: unless-stopped` policy, which means:
-- ✅ **Automatic startup** - Containers restart when Docker starts
-- ✅ **Correct order** - Dependencies respected (Postgres → Hive → Spark)
-- ✅ **Data intact** - All your tables and files remain untouched
-- ⏱️ **Wait 30-60 seconds** - Services need time to become healthy
+If services don't automatically start, manually restart them:
+```bash
+cd PART-A
+./start.sh    # Mac/Linux
+./start.ps1   # Windows
+```
+
+Wait 30–60 seconds for services to be healthy before accessing them.
 
 **Verify everything is running:**
 ```bash
