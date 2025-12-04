@@ -10,27 +10,53 @@ echo "First-time Setup: Hive-Iceberg-MinIO Lakehouse"
 echo "=========================================="
 echo ""
 
-# Download required JARs if not present
-if [ ! -f "$SCRIPT_DIR/lib/postgresql-42.6.0.jar" ]; then
-    echo "Downloading PostgreSQL JDBC driver..."
-    curl -sL -o "$SCRIPT_DIR/lib/postgresql-42.6.0.jar" \
-        https://jdbc.postgresql.org/download/postgresql-42.6.0.jar
-    echo "PostgreSQL driver downloaded"
-fi
+# Function to download file with verification
+download_jar() {
+    local url=$1
+    local output=$2
+    local name=$3
+    
+    # Remove if it's a directory (from failed download)
+    if [ -d "$output" ]; then
+        rm -rf "$output"
+    fi
+    
+    # Download only if file doesn't exist or is invalid
+    if [ ! -f "$output" ]; then
+        echo "Downloading $name..."
+        if curl -fsSL -o "$output" "$url"; then
+            # Verify it's actually a file with content
+            if [ -f "$output" ] && [ -s "$output" ]; then
+                echo "✓ $name downloaded successfully"
+            else
+                echo "✗ Download failed: file is empty"
+                rm -f "$output"
+                exit 1
+            fi
+        else
+            echo "✗ Download failed for $name"
+            exit 1
+        fi
+    else
+        echo "✓ $name already exists"
+    fi
+}
 
-if [ ! -f "$SCRIPT_DIR/lib/hadoop-aws-3.3.4.jar" ]; then
-    echo "Downloading Hadoop AWS JAR..."
-    curl -sL -o "$SCRIPT_DIR/lib/hadoop-aws-3.3.4.jar" \
-        https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar
-    echo "Hadoop AWS downloaded"
-fi
+# Download required JARs
+download_jar \
+    "https://jdbc.postgresql.org/download/postgresql-42.6.0.jar" \
+    "$SCRIPT_DIR/lib/postgresql-42.6.0.jar" \
+    "PostgreSQL JDBC driver"
 
-if [ ! -f "$SCRIPT_DIR/lib/aws-java-sdk-bundle-1.12.262.jar" ]; then
-    echo "Downloading AWS SDK bundle..."
-    curl -sL -o "$SCRIPT_DIR/lib/aws-java-sdk-bundle-1.12.262.jar" \
-        https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar
-    echo "AWS SDK downloaded"
-fi
+download_jar \
+    "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar" \
+    "$SCRIPT_DIR/lib/hadoop-aws-3.3.4.jar" \
+    "Hadoop AWS JAR"
+
+download_jar \
+    "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar" \
+    "$SCRIPT_DIR/lib/aws-java-sdk-bundle-1.12.262.jar" \
+    "AWS SDK bundle"
 
 echo ""
 echo "Creating and starting containers..."

@@ -14,27 +14,60 @@ Write-Host "First-time Setup: Hive-Iceberg-MinIO Lakehouse" -ForegroundColor Cya
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Download required JARs if not present
-$pgJar = Join-Path $LibDir "postgresql-42.6.0.jar"
-if (-not (Test-Path $pgJar)) {
-    Write-Host "Downloading PostgreSQL JDBC driver..."
-    Invoke-WebRequest -Uri "https://jdbc.postgresql.org/download/postgresql-42.6.0.jar" -OutFile $pgJar
-    Write-Host "√ PostgreSQL driver downloaded" -ForegroundColor Green
+# Function to download file with verification
+function Download-Jar {
+    param(
+        [string]$Url,
+        [string]$Output,
+        [string]$Name
+    )
+    
+    # Remove if it's a directory (from failed download)
+    if (Test-Path $Output -PathType Container) {
+        Remove-Item $Output -Recurse -Force
+    }
+    
+    # Download only if file doesn't exist or is invalid
+    if (-not (Test-Path $Output -PathType Leaf)) {
+        Write-Host "Downloading $Name..."
+        try {
+            # Use TLS 1.2
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $Url -OutFile $Output -ErrorAction Stop
+            
+            # Verify it's actually a file with content
+            if ((Test-Path $Output) -and ((Get-Item $Output).Length -gt 0)) {
+                Write-Host "√ $Name downloaded successfully" -ForegroundColor Green
+            } else {
+                Write-Host "× Download failed: file is empty" -ForegroundColor Red
+                Remove-Item $Output -Force -ErrorAction SilentlyContinue
+                exit 1
+            }
+        } catch {
+            Write-Host "× Download failed for $Name" -ForegroundColor Red
+            Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Red
+            exit 1
+        }
+    } else {
+        Write-Host "√ $Name already exists" -ForegroundColor Green
+    }
 }
 
-$hadoopJar = Join-Path $LibDir "hadoop-aws-3.3.4.jar"
-if (-not (Test-Path $hadoopJar)) {
-    Write-Host "Downloading Hadoop AWS JAR..."
-    Invoke-WebRequest -Uri "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar" -OutFile $hadoopJar
-    Write-Host "√ Hadoop AWS downloaded" -ForegroundColor Green
-}
+# Download required JARs
+Download-Jar `
+    -Url "https://jdbc.postgresql.org/download/postgresql-42.6.0.jar" `
+    -Output (Join-Path $LibDir "postgresql-42.6.0.jar") `
+    -Name "PostgreSQL JDBC driver"
 
-$awsJar = Join-Path $LibDir "aws-java-sdk-bundle-1.12.262.jar"
-if (-not (Test-Path $awsJar)) {
-    Write-Host "Downloading AWS SDK bundle..."
-    Invoke-WebRequest -Uri "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar" -OutFile $awsJar
-    Write-Host "√ AWS SDK downloaded" -ForegroundColor Green
-}
+Download-Jar `
+    -Url "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar" `
+    -Output (Join-Path $LibDir "hadoop-aws-3.3.4.jar") `
+    -Name "Hadoop AWS JAR"
+
+Download-Jar `
+    -Url "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar" `
+    -Output (Join-Path $LibDir "aws-java-sdk-bundle-1.12.262.jar") `
+    -Name "AWS SDK bundle"
 
 Write-Host ""
 Write-Host "Creating and starting containers..."
