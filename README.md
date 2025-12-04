@@ -59,7 +59,7 @@ Great! If setup completed successfully, your lakehouse is now running. Let's ver
 
 **Try it now:** Open Jupyter at http://localhost:8888. You'll see the familiar Jupyter interface ready to run Spark SQL queries. The MinIO console at http://localhost:9001 lets you browse your data lake like an S3 bucket.
 
-### 3. Run Streaming Analytics (Optional)
+### 3. Run Streaming Analytics (PART-B)
 
 Now that your lakehouse is running, let's add real-time streaming capabilities! PART-B sets up Kafka infrastructure and starts streaming live cryptocurrency prices into your lakehouse.
 
