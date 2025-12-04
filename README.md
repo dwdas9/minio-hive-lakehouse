@@ -5,7 +5,7 @@
 Welcome to my repo. Here, I tried to create a complete, production-ready data lakehouse running locally with Docker on Mac, Linux, or Windows.
 
 **Key Specialties:**
-- **On-Premises**: Fully self-hosted—no cloud dependencies. Works both on Windows and MAC(Apple silicon)
+- **On-Premises**: Fully self-hosted - nothing on cloud. Works both on Windows and MAC(Apple silicon)
 - **Open Source Stack**: Apache Iceberg, MinIO, Hive Metastore, Spark, Kafka, Airflow
 - **Scalable Architecture**: Even though the design is local on docker. The same architecture can be scalled up for real production use.
 
@@ -18,7 +18,7 @@ Welcome to my repo. Here, I tried to create a complete, production-ready data la
 
 ## Start Here: Choose Your Path
 
-This repository is organized into two main parts. **Start with PART-A first**, then optionally add PART-B.
+I have split the repo into two main parts. **Start with PART-A first**, then go to PART-B.
 
 | Part | Purpose | Documentation |
 |------|---------|---------------|
@@ -30,7 +30,7 @@ This repository is organized into two main parts. **Start with PART-A first**, t
 
 ### 1. Setup Core Infrastructure (PART-A)
 
-**First time only:** Use setup scripts to download required JARs and create containers.
+**First time only:** Use setup scripts to auto-download required JARs and create containers automatically.
 
 | OS         | Command(s)                                                                                  |
 |------------|------------------------------------------------------------------------------------------|
@@ -43,16 +43,20 @@ This repository is organized into two main parts. **Start with PART-A first**, t
 - Waits for services to be healthy
 - Starts Jupyter notebook
 
-**Daily use after setup:** Use start scripts (much faster, no downloads).
-
-| OS         | Command(s)                     |
-|------------|--------------------------------|
-| Mac/Linux  | `cd PART-A`<br>`./start.sh`    |
-| Windows    | `cd PART-A`<br>`./start.ps1`   |
-
-This creates the base lakehouse with MinIO, Hive, and Spark.
-
 ![](images/20251202124641.png)
+
+After initial setup, these are the common commands you'll use to manage your lakehouse:
+
+| Step                | Mac/Linux Command(s)           | Windows Command(s)           |
+|---------------------|-------------------------------|------------------------------|
+| Start PART-A        | `cd PART-A`<br>`./start.sh`   | `cd PART-A`<br>`./start.ps1` |
+| Stop PART-A         | `cd PART-A`<br>`./stop.sh`    | `cd PART-A`<br>`./stop.ps1`  |
+| Start PART-B        | `cd PART-B`<br>`docker-compose up -d` | `cd PART-B`<br>`docker-compose up -d` |
+| Stop PART-B         | `cd PART-B`<br>`docker-compose down`  | `cd PART-B`<br>`docker-compose down`  |
+| Access Jupyter      | http://localhost:8888         | http://localhost:8888        |
+| Access MinIO        | http://localhost:9001         | http://localhost:9001        |
+| Access Kafka UI     | http://localhost:8080         | http://localhost:8080        |
+
 
 ### 2. Access Services
 
@@ -72,20 +76,6 @@ Once PART-A is running, you can add real-time crypto price streaming:
 | Windows    | `cd PART-B`<br>`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`<br>`./setup.ps1`|
 
 ---
-
-## Daily Workflow
-
-After initial setup, these are the common commands you'll use to manage your lakehouse:
-
-| Step                | Mac/Linux Command(s)           | Windows Command(s)           |
-|---------------------|-------------------------------|------------------------------|
-| Start PART-A        | `cd PART-A`<br>`./start.sh`   | `cd PART-A`<br>`./start.ps1` |
-| Stop PART-A         | `cd PART-A`<br>`./stop.sh`    | `cd PART-A`<br>`./stop.ps1`  |
-| Start PART-B        | `cd PART-B`<br>`docker-compose up -d` | `cd PART-B`<br>`docker-compose up -d` |
-| Stop PART-B         | `cd PART-B`<br>`docker-compose down`  | `cd PART-B`<br>`docker-compose down`  |
-| Access Jupyter      | http://localhost:8888         | http://localhost:8888        |
-| Access MinIO        | http://localhost:9001         | http://localhost:9001        |
-| Access Kafka UI     | http://localhost:8080         | http://localhost:8080        |
 
 ### Complete Reset (Use with Caution)
 
@@ -134,8 +124,6 @@ After nuking, run `./setup.sh` or `./setup.ps1` to recreate everything from scra
 | **Zookeeper** | Coordinator | Kafka cluster state |
 | **Producer** | Data ingester | Nothing (fetches and forwards) |
 | **Kafka UI** | Monitoring tool | Nothing (reads from Kafka) |
-
-
 
 ## What Persists?
 
